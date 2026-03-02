@@ -20,6 +20,7 @@
         .present { background: #28a745 !important; color: white; }
         .absent { background: #dc3545 !important; color: white; }
         .loading-text { text-align: center; color: #666; font-style: italic; }
+        .add-btn { width: 100%; padding: 8px; margin-top: 10px; border: 1px dashed #4a90e2; color: #4a90e2; background: transparent; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -33,6 +34,7 @@
     <div id="attendanceSection" class="attendance" style="display:none;">
         <h3 id="selectedDate"></h3>
         <div id="modules"></div>
+        <button class="add-btn" id="addModuleBtn">+ Add Subject Slot</button>
     </div>
 </div>
 
@@ -40,7 +42,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Your unique Firebase configuration
     const firebaseConfig = {
         apiKey: "AIzaSyCXt0ewPRsF2JQ0iRyHK3ZfYisljR3Q7JY",
         authDomain: "attendance-3d85b.firebaseapp.com",
@@ -63,6 +64,7 @@
     const attendanceSection = document.getElementById("attendanceSection");
     const selectedDateText = document.getElementById("selectedDate");
     const modulesDiv = document.getElementById("modules");
+    const addBtn = document.getElementById("addModuleBtn");
 
     window.loadCalendar = function() {
         calendarDiv.innerHTML = "";
@@ -89,18 +91,22 @@
         const docRef = doc(db, "attendance", dateKey);
         try {
             const docSnap = await getDoc(docRef);
+            // Default to 5 empty slots if no data exists for this day
             let data = docSnap.exists() ? docSnap.data().modules : 
-                [
-                    {name: "FMH202", status: null},
-                    {name: "MEC202", status: null},
-                    {name: "MDD", status: null},
-                    {name: "MATH", status: null},
-                    {name: "MEC practical", status: null}
-                ];
+                Array.from({length: 5}, () => ({name: "", status: null}));
+            
             renderModules(data, dateKey, day);
+            
+            // Setup Add Button
+            addBtn.onclick = async () => {
+                data.push({name: "", status: null});
+                await setDoc(doc(db, "attendance", dateKey), { modules: data });
+                renderModules(data, dateKey, day);
+            };
+
         } catch (e) {
             console.error("Error loading data: ", e);
-            modulesDiv.innerHTML = "Error connecting to Firebase. Check your 'Rules' tab.";
+            modulesDiv.innerHTML = "Error connecting to Firebase.";
         }
     }
 
@@ -111,7 +117,14 @@
             div.className = "module";
 
             let input = document.createElement("input");
-            input.value = module.name;
+            input.placeholder = "Subject Name...";
+            input.value = module.name || "";
+
+            // Save name as you type
+            input.onblur = async () => {
+                data[index].name = input.value;
+                await setDoc(doc(db, "attendance", dateKey), { modules: data });
+            };
 
             let pBtn = document.createElement("button");
             pBtn.innerText = "P";
@@ -122,9 +135,8 @@
             if(module.status === "Abs") aBtn.classList.add("absent");
 
             const updateStatus = async (newStatus) => {
-                module.status = newStatus;
-                module.name = input.value;
-                // Instant Cloud Save
+                data[index].status = newStatus;
+                data[index].name = input.value;
                 await setDoc(doc(db, "attendance", dateKey), { modules: data });
                 renderModules(data, dateKey, day); 
             };
