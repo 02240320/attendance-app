@@ -21,6 +21,7 @@
         .present { background: #28a745 !important; color: white; }
         .absent { background: #dc3545 !important; color: white; }
         .add-btn { width: 100%; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; margin-top: 10px; cursor: pointer; font-weight: bold; }
+        .delete-btn { background: #ffeded !important; color: #dc3545 !important; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -42,9 +43,8 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, set, get, child, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // Your actual Firebase Config integrated
     const firebaseConfig = {
         apiKey: "AIzaSyCiV-EsnHoXdW4wTvJCsmUH_C2upW3NOAc",
         authDomain: "calen-3220d.firebaseapp.com",
@@ -53,7 +53,7 @@
         messagingSenderId: "5682167802",
         appId: "1:5682167802:web:8f23c92ec613ec1e6c6e43",
         measurementId: "G-XXZQC0NJYK",
-        databaseURL: "https://calen-3220d-default-rtdb.firebaseio.com" // Standard URL format for Firebase RTDB
+        databaseURL: "https://calen-3220d-default-rtdb.firebaseio.com"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -63,6 +63,7 @@
     let currentMonth = new Date().getMonth();
     let selectedDay = null;
 
+    // Attach to window so HTML buttons can access these functions
     window.changeMonth = (dir) => {
         currentMonth += dir;
         if (currentMonth < 0) { currentMonth = 11; currentYear--; }
@@ -91,7 +92,6 @@
     }
 
     window.openDay = async function(day) {
-        // UI highlight
         if(selectedDay) {
             const prevDay = document.getElementById(`day-${selectedDay}`);
             if(prevDay) prevDay.classList.remove('selected');
@@ -120,9 +120,11 @@
 
     function renderModules(timetable, attendance, dateKey, weekKey) {
         const modulesDiv = document.getElementById("modules");
-        modulesDiv.innerHTML = timetable.length === 0 ? "<p style='color:grey; font-size:0.9em;'>No subjects added for this weekday yet.</p>" : "";
+        modulesDiv.innerHTML = timetable.length === 0 ? "<p style='color:grey; font-size:0.9em;'>No subjects for this day.</p>" : "";
 
         timetable.forEach((module, index) => {
+            if (!module) return; // Skip empty slots
+
             const div = document.createElement("div");
             div.className = "module";
 
@@ -143,27 +145,45 @@
             if (attendance[index] === "A") aBtn.classList.add("absent");
             aBtn.onclick = async () => saveStatus(dateKey, index, "A");
 
+            const delBtn = document.createElement("button");
+            delBtn.innerText = "✕";
+            delBtn.className = "delete-btn";
+            delBtn.onclick = async () => {
+                timetable.splice(index, 1);
+                await set(ref(db, `timetables/${weekKey}`), timetable);
+                openDay(selectedDay);
+            };
+
             div.appendChild(input);
             div.appendChild(pBtn);
             div.appendChild(aBtn);
+            div.appendChild(delBtn);
             modulesDiv.appendChild(div);
         });
     }
 
     async function saveStatus(dateKey, index, status) {
-        const dbRef = ref(db, `attendance/${dateKey}/${index}`);
-        await set(dbRef, status);
-        openDay(selectedDay); // Refresh UI
+        const currentRef = ref(db, `attendance/${dateKey}/${index}`);
+        const snap = await get(currentRef);
+        
+        // Toggle: If clicking the same button twice, it clears the status
+        if (snap.val() === status) {
+            await remove(currentRef);
+        } else {
+            await set(currentRef, status);
+        }
+        openDay(selectedDay); 
     }
 
     window.addModule = async function() {
+        if(!selectedDay) return;
         const weekday = new Date(currentYear, currentMonth, selectedDay).toLocaleString('default', { weekday: 'short' });
         const weekKey = `timetable-${weekday}`;
         const dbRef = ref(db, `timetables/${weekKey}`);
         
         const snap = await get(dbRef);
-        let timetable = snap.exists() ? snap.val() : [];
-        timetable.push({name: "New Module"});
+        let timetable = snap.exists() ? (Array.isArray(snap.val()) ? snap.val() : []) : [];
+        timetable.push({name: "New Subject"});
         
         await set(dbRef, timetable);
         openDay(selectedDay);
