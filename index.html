@@ -1,36 +1,35 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Attendance App - Cloud Version</title>
-
-<style>
-    body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f4f6f9; display: flex; justify-content: center; }
-    .app { width: 100%; max-width: 420px; padding: 20px; }
-    h2 { text-align: center; margin-bottom: 10px; }
-    .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-    .nav button { padding: 6px 12px; border: none; background: #4a90e2; color: white; border-radius: 8px; cursor: pointer; }
-    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-    .day { background: white; padding: 12px 0; text-align: center; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.08); transition: 0.2s; }
-    .day:hover { background: #e6f0ff; }
-    .day.active { border: 2px solid #4a90e2; font-weight: bold; }
-    .attendance { margin-top: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    .module { display: flex; align-items: center; margin-bottom: 10px; }
-    .module input { flex: 1; padding: 6px; border-radius: 6px; border: 1px solid #ccc; margin-right: 6px; }
-    .module button { border: none; padding: 8px 12px; margin-left: 4px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-    .present { background: #28a745 !important; color: white; }
-    .absent { background: #dc3545 !important; color: white; }
-    .add-btn { width: 100%; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 8px; margin-top: 10px; cursor: pointer; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance App - Cloud Version</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f4f6f9; display: flex; justify-content: center; }
+        .app { width: 100%; max-width: 420px; padding: 20px; }
+        h2 { text-align: center; margin-bottom: 10px; }
+        .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .nav button { padding: 8px 16px; border: none; background: #4a90e2; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+        .day { background: white; padding: 12px 0; text-align: center; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.08); transition: 0.2s; }
+        .day:hover { background: #e6f0ff; }
+        .day.selected { border: 2px solid #4a90e2; background: #eef6ff; font-weight: bold; }
+        .attendance { margin-top: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .module { display: flex; align-items: center; margin-bottom: 10px; gap: 5px; }
+        .module input { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
+        .module button { border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; background: #eee; }
+        .present { background: #28a745 !important; color: white; }
+        .absent { background: #dc3545 !important; color: white; }
+        .add-btn { width: 100%; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; margin-top: 10px; cursor: pointer; font-weight: bold; }
+    </style>
 </head>
-
 <body>
+
 <div class="app">
     <h2 id="monthYear"></h2>
     <div class="nav">
-        <button onclick="changeMonth(-1)">◀</button>
-        <button onclick="changeMonth(1)">▶</button>
+        <button onclick="changeMonth(-1)">◀ Prev</button>
+        <button onclick="changeMonth(1)">Next ▶</button>
     </div>
     <div class="calendar" id="calendar"></div>
 
@@ -45,12 +44,16 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // 1. FILL THIS IN FROM YOUR FIREBASE SETTINGS
+    // Your actual Firebase Config integrated
     const firebaseConfig = {
-        apiKey: "PASTE_YOUR_API_KEY_HERE",
-        databaseURL: "https://calendar-6a325-default-rtdb.firebaseio.com",
-        projectId: "calendar-6a325",
-        appId: "PASTE_YOUR_APP_ID_HERE"
+        apiKey: "AIzaSyCiV-EsnHoXdW4wTvJCsmUH_C2upW3NOAc",
+        authDomain: "calen-3220d.firebaseapp.com",
+        projectId: "calen-3220d",
+        storageBucket: "calen-3220d.firebasestorage.app",
+        messagingSenderId: "5682167802",
+        appId: "1:5682167802:web:8f23c92ec613ec1e6c6e43",
+        measurementId: "G-XXZQC0NJYK",
+        databaseURL: "https://calen-3220d-default-rtdb.firebaseio.com" // Standard URL format for Firebase RTDB
     };
 
     const app = initializeApp(firebaseConfig);
@@ -60,7 +63,6 @@
     let currentMonth = new Date().getMonth();
     let selectedDay = null;
 
-    // Make functions global for HTML buttons
     window.changeMonth = (dir) => {
         currentMonth += dir;
         if (currentMonth < 0) { currentMonth = 11; currentYear--; }
@@ -81,6 +83,7 @@
         for (let day = 1; day <= daysInMonth; day++) {
             let div = document.createElement("div");
             div.className = "day";
+            div.id = `day-${day}`;
             div.innerText = day;
             div.onclick = () => openDay(day);
             calendarDiv.appendChild(div);
@@ -88,7 +91,14 @@
     }
 
     window.openDay = async function(day) {
+        // UI highlight
+        if(selectedDay) {
+            const prevDay = document.getElementById(`day-${selectedDay}`);
+            if(prevDay) prevDay.classList.remove('selected');
+        }
         selectedDay = day;
+        document.getElementById(`day-${day}`).classList.add('selected');
+
         const dateKey = `${currentYear}-${currentMonth + 1}-${day}`;
         const weekday = new Date(currentYear, currentMonth, day).toLocaleString('default', { weekday: 'short' });
         const weekKey = `timetable-${weekday}`;
@@ -96,14 +106,13 @@
         document.getElementById("selectedDateDisplay").innerText = `${dateKey} (${weekday})`;
         document.getElementById("attendanceSection").style.display = "block";
 
-        // Fetch Timetable (Weekly structure) and Attendance (Daily record)
         const dbRef = ref(db);
         const [timetableSnap, attendanceSnap] = await Promise.all([
             get(child(dbRef, `timetables/${weekKey}`)),
             get(child(dbRef, `attendance/${dateKey}`))
         ]);
 
-        let timetable = timetableSnap.exists() ? timetableSnap.val() : [{name: "Module 1"}];
+        let timetable = timetableSnap.exists() ? timetableSnap.val() : [];
         let attendance = attendanceSnap.exists() ? attendanceSnap.val() : {};
 
         renderModules(timetable, attendance, dateKey, weekKey);
@@ -111,7 +120,7 @@
 
     function renderModules(timetable, attendance, dateKey, weekKey) {
         const modulesDiv = document.getElementById("modules");
-        modulesDiv.innerHTML = "";
+        modulesDiv.innerHTML = timetable.length === 0 ? "<p style='color:grey; font-size:0.9em;'>No subjects added for this weekday yet.</p>" : "";
 
         timetable.forEach((module, index) => {
             const div = document.createElement("div");
@@ -119,7 +128,7 @@
 
             const input = document.createElement("input");
             input.value = module.name;
-            input.onchange = async () => {
+            input.onblur = async () => {
                 timetable[index].name = input.value;
                 await set(ref(db, `timetables/${weekKey}`), timetable);
             };
@@ -142,26 +151,26 @@
     }
 
     async function saveStatus(dateKey, index, status) {
-        const dbRef = ref(db, `attendance/${dateKey}`);
-        const snap = await get(dbRef);
-        let data = snap.exists() ? snap.val() : {};
-        data[index] = status;
-        await set(dbRef, data);
-        openDay(selectedDay);
+        const dbRef = ref(db, `attendance/${dateKey}/${index}`);
+        await set(dbRef, status);
+        openDay(selectedDay); // Refresh UI
     }
 
     window.addModule = async function() {
         const weekday = new Date(currentYear, currentMonth, selectedDay).toLocaleString('default', { weekday: 'short' });
         const weekKey = `timetable-${weekday}`;
         const dbRef = ref(db, `timetables/${weekKey}`);
+        
         const snap = await get(dbRef);
         let timetable = snap.exists() ? snap.val() : [];
         timetable.push({name: "New Module"});
+        
         await set(dbRef, timetable);
         openDay(selectedDay);
     };
 
     loadCalendar();
 </script>
+
 </body>
 </html>
