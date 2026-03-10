@@ -1,10 +1,13 @@
-```html
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Attendance App</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <style>
 body {
@@ -13,12 +16,14 @@ body {
     background: #f4f6f9;
     display: flex;
     justify-content: center;
+    padding: 10px;
 }
 
 .app {
     width: 100%;
     max-width: 420px;
     padding: 20px;
+    box-sizing: border-box;
 }
 
 h2 {
@@ -40,6 +45,7 @@ h2 {
     color: white;
     border-radius: 8px;
     cursor: pointer;
+    font-size: 1rem;
 }
 
 .calendar {
@@ -77,8 +83,10 @@ h2 {
 
 .module {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     margin-bottom: 10px;
+    gap: 6px;
 }
 
 .module input {
@@ -86,15 +94,14 @@ h2 {
     padding: 6px;
     border-radius: 6px;
     border: 1px solid #ccc;
-    margin-right: 6px;
 }
 
 .module button {
     border: none;
     padding: 6px 10px;
-    margin-left: 4px;
     border-radius: 6px;
     cursor: pointer;
+    font-size: 0.9rem;
 }
 
 .present {
@@ -105,6 +112,18 @@ h2 {
 .absent {
     background: #dc3545;
     color: white;
+}
+
+#modules button.add-slot {
+    width: 100%;
+    margin-top: 6px;
+}
+
+@media (max-width: 360px) {
+    .nav button, .module button, .module input {
+        font-size: 0.85rem;
+        padding: 5px;
+    }
 }
 </style>
 </head>
@@ -128,7 +147,18 @@ h2 {
 </div>
 
 <script>
+/* Firebase Setup */
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+    projectId: "YOUR_PROJECT",
+};
 
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* Calendar & Attendance Logic */
 let today = new Date();
 let year = today.getFullYear();
 let month = today.getMonth();
@@ -139,172 +169,103 @@ const attendanceSection = document.getElementById("attendanceSection");
 const selectedDateText = document.getElementById("selectedDate");
 const modulesDiv = document.getElementById("modules");
 
-
 function loadCalendar(){
+    calendarDiv.innerHTML="";
+    monthYear.innerText = new Date(year,month).toLocaleString('default',{month:'long',year:'numeric'});
 
-calendarDiv.innerHTML="";
+    let firstDay = new Date(year,month,1).getDay();
+    let daysInMonth = new Date(year,month+1,0).getDate();
 
-monthYear.innerText =
-new Date(year,month).toLocaleString('default',{month:'long',year:'numeric'});
+    for(let i=0;i<firstDay;i++) calendarDiv.innerHTML+="<div></div>";
 
-let firstDay=new Date(year,month,1).getDay();
-let daysInMonth=new Date(year,month+1,0).getDate();
-
-for(let i=0;i<firstDay;i++){
-calendarDiv.innerHTML+="<div></div>";
+    for(let day=1; day<=daysInMonth; day++){
+        let div = document.createElement("div");
+        div.className="day";
+        div.innerText = day;
+        div.onclick = div.ontouchstart = () => openDay(day);
+        calendarDiv.appendChild(div);
+    }
 }
-
-for(let day=1;day<=daysInMonth;day++){
-
-let div=document.createElement("div");
-div.className="day";
-div.innerText=day;
-div.onclick=()=>openDay(day);
-
-calendarDiv.appendChild(div);
-
-}
-
-}
-
 
 function openDay(day){
+    let date = new Date(year, month, day);
+    let weekday = date.toLocaleString('default',{weekday:'short'});
+    let dateKey = `${year}-${month+1}-${day}`;
+    let weekKey = `week-${weekday}`;
 
-let date=new Date(year,month,day);
+    selectedDateText.innerText = dateKey+" ("+weekday+")";
+    attendanceSection.style.display="block";
 
-let weekday=date.toLocaleString('default',{weekday:'short'});
+    // Load weekly modules
+    db.ref(weekKey).get().then(snapshot=>{
+        let weekly = snapshot.exists() ? snapshot.val() : Array.from({length:5},(_,i)=>({name:`Module ${i+1}`}));
 
-let dateKey=`${year}-${month+1}-${day}`;
-let weekKey=`week-${weekday}`;
+        // Load attendance for that day
+        db.ref(`attendance/${dateKey}`).get().then(snapshot=>{
+            let attendance = snapshot.exists() ? snapshot.val() : {};
 
-selectedDateText.innerText=dateKey+" ("+weekday+")";
+            modulesDiv.innerHTML = "";
 
-attendanceSection.style.display="block";
+            weekly.forEach((module,index)=>{
+                let div = document.createElement("div");
+                div.className="module";
 
+                let input = document.createElement("input");
+                input.value = module.name;
 
-let weekly=JSON.parse(localStorage.getItem(weekKey)) ||
-Array.from({length:5},(_,i)=>({name:`Module ${i+1}`}));
+                let pBtn = document.createElement("button");
+                pBtn.innerText="P";
 
+                let aBtn = document.createElement("button");
+                aBtn.innerText="A";
 
-let attendance=JSON.parse(localStorage.getItem(dateKey)) || {};
+                if(attendance[index]==="P") pBtn.classList.add("present");
+                if(attendance[index]==="Abs") aBtn.classList.add("absent");
 
+                const markAttendance = (status)=>{
+                    attendance[index] = status;
+                    module.name = input.value;
+                    db.ref(`attendance/${dateKey}`).set(attendance);
+                    db.ref(weekKey).set(weekly);
+                    openDay(day);
+                }
 
-modulesDiv.innerHTML="";
+                pBtn.onclick = pBtn.ontouchstart = ()=> markAttendance("P");
+                aBtn.onclick = aBtn.ontouchstart = ()=> markAttendance("Abs");
 
+                div.appendChild(input);
+                div.appendChild(pBtn);
+                div.appendChild(aBtn);
+                modulesDiv.appendChild(div);
+            });
 
-weekly.forEach((module,index)=>{
-
-let div=document.createElement("div");
-div.className="module";
-
-
-let input=document.createElement("input");
-input.value=module.name;
-
-
-let pBtn=document.createElement("button");
-pBtn.innerText="P";
-
-
-let aBtn=document.createElement("button");
-aBtn.innerText="A";
-
-
-if(attendance[index]==="P") pBtn.classList.add("present");
-if(attendance[index]==="Abs") aBtn.classList.add("absent");
-
-
-pBtn.onclick=()=>{
-
-attendance[index]="P";
-
-module.name=input.value;
-
-localStorage.setItem(dateKey,JSON.stringify(attendance));
-localStorage.setItem(weekKey,JSON.stringify(weekly));
-
-openDay(day);
-
-};
-
-
-aBtn.onclick=()=>{
-
-attendance[index]="Abs";
-
-module.name=input.value;
-
-localStorage.setItem(dateKey,JSON.stringify(attendance));
-localStorage.setItem(weekKey,JSON.stringify(weekly));
-
-openDay(day);
-
-};
-
-
-div.appendChild(input);
-div.appendChild(pBtn);
-div.appendChild(aBtn);
-
-modulesDiv.appendChild(div);
-
-});
-
-
-let addBtn=document.createElement("button");
-
-addBtn.innerText="+ Add Slot";
-
-addBtn.style.marginTop="10px";
-
-
-addBtn.onclick=()=>{
-
-weekly.push({name:"New Module"});
-
-localStorage.setItem(weekKey,JSON.stringify(weekly));
-
-openDay(day);
-
-};
-
-modulesDiv.appendChild(addBtn);
-
+            // Add slot button
+            let addBtn = document.createElement("button");
+            addBtn.innerText="+ Add Slot";
+            addBtn.className="add-slot";
+            addBtn.onclick = addBtn.ontouchstart = ()=>{
+                weekly.push({name:"New Module"});
+                db.ref(weekKey).set(weekly);
+                openDay(day);
+            };
+            modulesDiv.appendChild(addBtn);
+        });
+    });
 }
-
 
 function prevMonth(){
-
-month--;
-
-if(month<0){
-month=11;
-year--;
+    month--;
+    if(month<0){ month=11; year--; }
+    loadCalendar();
 }
-
-loadCalendar();
-
-}
-
 
 function nextMonth(){
-
-month++;
-
-if(month>11){
-month=0;
-year++;
+    month++;
+    if(month>11){ month=0; year++; }
+    loadCalendar();
 }
 
 loadCalendar();
-
-}
-
-
-loadCalendar();
-
 </script>
-
 </body>
 </html>
-```
