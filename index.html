@@ -1,160 +1,310 @@
+```html
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Attendance App</title>
-    <style>
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f4f6f9; display: flex; justify-content: center; }
-        .app { width: 100%; max-width: 420px; padding: 20px; }
-        h2 { text-align: center; margin-bottom: 10px; }
-        .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .nav button { padding: 6px 12px; border: none; background: #4a90e2; color: white; border-radius: 8px; cursor: pointer; }
-        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-        .day { background: white; padding: 12px 0; text-align: center; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.08); transition: 0.2s; }
-        .day:hover { background: #e6f0ff; }
-        .attendance { margin-top: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .module { display: flex; align-items: center; margin-bottom: 10px; }
-        .module input { flex: 1; padding: 6px; border-radius: 6px; border: 1px solid #ccc; margin-right: 6px; }
-        .module button { border: none; padding: 8px 12px; margin-left: 4px; border-radius: 6px; cursor: pointer; background: #eee; font-weight: bold; }
-        .present { background: #28a745 !important; color: white; }
-        .absent { background: #dc3545 !important; color: white; }
-        .loading-text { text-align: center; color: #666; font-style: italic; }
-        .add-btn { width: 100%; padding: 8px; margin-top: 10px; border: 1px dashed #4a90e2; color: #4a90e2; background: transparent; border-radius: 8px; cursor: pointer; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance App</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #f4f6f9;
+    display: flex;
+    justify-content: center;
+}
+
+.app {
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.nav button {
+    padding: 6px 12px;
+    border: none;
+    background: #4a90e2;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+}
+
+.day {
+    background: white;
+    padding: 12px 0;
+    text-align: center;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    transition: 0.2s;
+}
+
+.day:hover {
+    background: #e6f0ff;
+}
+
+.selected {
+    background: #4a90e2;
+    color: white;
+}
+
+.attendance {
+    margin-top: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.module {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.module input {
+    flex: 1;
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    margin-right: 6px;
+}
+
+.module button {
+    border: none;
+    padding: 6px 10px;
+    margin-left: 4px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.present {
+    background: #28a745;
+    color: white;
+}
+
+.absent {
+    background: #dc3545;
+    color: white;
+}
+</style>
 </head>
+
 <body>
 <div class="app">
-    <h2 id="monthYear"></h2>
-    <div class="nav">
-        <button onclick="prevMonth()">◀</button>
-        <button onclick="nextMonth()">▶</button>
-    </div>
-    <div class="calendar" id="calendar"></div>
-    <div id="attendanceSection" class="attendance" style="display:none;">
-        <h3 id="selectedDate"></h3>
-        <div id="modules"></div>
-        <button class="add-btn" id="addModuleBtn">+ Add Subject Slot</button>
-    </div>
+<h2 id="monthYear"></h2>
+
+<div class="nav">
+<button onclick="prevMonth()">◀</button>
+<button onclick="nextMonth()">▶</button>
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+<div class="calendar" id="calendar"></div>
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyCXt0ewPRsF2JQ0iRyHK3ZfYisljR3Q7JY",
-        authDomain: "attendance-3d85b.firebaseapp.com",
-        projectId: "attendance-3d85b",
-        storageBucket: "attendance-3d85b.firebasestorage.app",
-        messagingSenderId: "719762562252",
-        appId: "1:719762562252:web:bbd4e9f3b9264d29ea7669",
-        measurementId: "G-MWBDBK65C9"
-    };
+<div id="attendanceSection" class="attendance" style="display:none;">
+<h3 id="selectedDate"></h3>
+<div id="modules"></div>
+</div>
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+</div>
 
-    let today = new Date();
-    let year = today.getFullYear();
-    let month = today.getMonth();
+<script>
 
-    const calendarDiv = document.getElementById("calendar");
-    const monthYear = document.getElementById("monthYear");
-    const attendanceSection = document.getElementById("attendanceSection");
-    const selectedDateText = document.getElementById("selectedDate");
-    const modulesDiv = document.getElementById("modules");
-    const addBtn = document.getElementById("addModuleBtn");
+let today = new Date();
+let year = today.getFullYear();
+let month = today.getMonth();
 
-    window.loadCalendar = function() {
-        calendarDiv.innerHTML = "";
-        monthYear.innerText = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
-        let firstDay = new Date(year, month, 1).getDay();
-        let daysInMonth = new Date(year, month + 1, 0).getDate();
+const calendarDiv = document.getElementById("calendar");
+const monthYear = document.getElementById("monthYear");
+const attendanceSection = document.getElementById("attendanceSection");
+const selectedDateText = document.getElementById("selectedDate");
+const modulesDiv = document.getElementById("modules");
 
-        for (let i = 0; i < firstDay; i++) { calendarDiv.innerHTML += "<div></div>"; }
-        for (let day = 1; day <= daysInMonth; day++) {
-            let div = document.createElement("div");
-            div.className = "day";
-            div.innerText = day;
-            div.onclick = () => openDay(day);
-            calendarDiv.appendChild(div);
-        }
-    }
 
-    async function openDay(day) {
-        let dateKey = `${year}-${month + 1}-${day}`;
-        selectedDateText.innerText = "Date: " + dateKey;
-        attendanceSection.style.display = "block";
-        modulesDiv.innerHTML = "<p class='loading-text'>Syncing with Cloud...</p>";
+function loadCalendar(){
 
-        const docRef = doc(db, "attendance", dateKey);
-        try {
-            const docSnap = await getDoc(docRef);
-            // Default to 5 empty slots if no data exists for this day
-            let data = docSnap.exists() ? docSnap.data().modules : 
-                Array.from({length: 5}, () => ({name: "", status: null}));
-            
-            renderModules(data, dateKey, day);
-            
-            // Setup Add Button
-            addBtn.onclick = async () => {
-                data.push({name: "", status: null});
-                await setDoc(doc(db, "attendance", dateKey), { modules: data });
-                renderModules(data, dateKey, day);
-            };
+calendarDiv.innerHTML="";
 
-        } catch (e) {
-            console.error("Error loading data: ", e);
-            modulesDiv.innerHTML = "Error connecting to Firebase.";
-        }
-    }
+monthYear.innerText =
+new Date(year,month).toLocaleString('default',{month:'long',year:'numeric'});
 
-    function renderModules(data, dateKey, day) {
-        modulesDiv.innerHTML = "";
-        data.forEach((module, index) => {
-            let div = document.createElement("div");
-            div.className = "module";
+let firstDay=new Date(year,month,1).getDay();
+let daysInMonth=new Date(year,month+1,0).getDate();
 
-            let input = document.createElement("input");
-            input.placeholder = "Subject Name...";
-            input.value = module.name || "";
+for(let i=0;i<firstDay;i++){
+calendarDiv.innerHTML+="<div></div>";
+}
 
-            // Save name as you type
-            input.onblur = async () => {
-                data[index].name = input.value;
-                await setDoc(doc(db, "attendance", dateKey), { modules: data });
-            };
+for(let day=1;day<=daysInMonth;day++){
 
-            let pBtn = document.createElement("button");
-            pBtn.innerText = "P";
-            if(module.status === "P") pBtn.classList.add("present");
+let div=document.createElement("div");
+div.className="day";
+div.innerText=day;
+div.onclick=()=>openDay(day);
 
-            let aBtn = document.createElement("button");
-            aBtn.innerText = "A";
-            if(module.status === "Abs") aBtn.classList.add("absent");
+calendarDiv.appendChild(div);
 
-            const updateStatus = async (newStatus) => {
-                data[index].status = newStatus;
-                data[index].name = input.value;
-                await setDoc(doc(db, "attendance", dateKey), { modules: data });
-                renderModules(data, dateKey, day); 
-            };
+}
 
-            pBtn.onclick = () => updateStatus("P");
-            aBtn.onclick = () => updateStatus("Abs");
+}
 
-            div.appendChild(input);
-            div.appendChild(pBtn);
-            div.appendChild(aBtn);
-            modulesDiv.appendChild(div);
-        });
-    }
 
-    window.prevMonth = () => { month--; if(month < 0){ month = 11; year--; } loadCalendar(); };
-    window.nextMonth = () => { month++; if(month > 11){ month = 0; year++; } loadCalendar(); };
+function openDay(day){
 
-    loadCalendar();
+let date=new Date(year,month,day);
+
+let weekday=date.toLocaleString('default',{weekday:'short'});
+
+let dateKey=`${year}-${month+1}-${day}`;
+let weekKey=`week-${weekday}`;
+
+selectedDateText.innerText=dateKey+" ("+weekday+")";
+
+attendanceSection.style.display="block";
+
+
+let weekly=JSON.parse(localStorage.getItem(weekKey)) ||
+Array.from({length:5},(_,i)=>({name:`Module ${i+1}`}));
+
+
+let attendance=JSON.parse(localStorage.getItem(dateKey)) || {};
+
+
+modulesDiv.innerHTML="";
+
+
+weekly.forEach((module,index)=>{
+
+let div=document.createElement("div");
+div.className="module";
+
+
+let input=document.createElement("input");
+input.value=module.name;
+
+
+let pBtn=document.createElement("button");
+pBtn.innerText="P";
+
+
+let aBtn=document.createElement("button");
+aBtn.innerText="A";
+
+
+if(attendance[index]==="P") pBtn.classList.add("present");
+if(attendance[index]==="Abs") aBtn.classList.add("absent");
+
+
+pBtn.onclick=()=>{
+
+attendance[index]="P";
+
+module.name=input.value;
+
+localStorage.setItem(dateKey,JSON.stringify(attendance));
+localStorage.setItem(weekKey,JSON.stringify(weekly));
+
+openDay(day);
+
+};
+
+
+aBtn.onclick=()=>{
+
+attendance[index]="Abs";
+
+module.name=input.value;
+
+localStorage.setItem(dateKey,JSON.stringify(attendance));
+localStorage.setItem(weekKey,JSON.stringify(weekly));
+
+openDay(day);
+
+};
+
+
+div.appendChild(input);
+div.appendChild(pBtn);
+div.appendChild(aBtn);
+
+modulesDiv.appendChild(div);
+
+});
+
+
+let addBtn=document.createElement("button");
+
+addBtn.innerText="+ Add Slot";
+
+addBtn.style.marginTop="10px";
+
+
+addBtn.onclick=()=>{
+
+weekly.push({name:"New Module"});
+
+localStorage.setItem(weekKey,JSON.stringify(weekly));
+
+openDay(day);
+
+};
+
+modulesDiv.appendChild(addBtn);
+
+}
+
+
+function prevMonth(){
+
+month--;
+
+if(month<0){
+month=11;
+year--;
+}
+
+loadCalendar();
+
+}
+
+
+function nextMonth(){
+
+month++;
+
+if(month>11){
+month=0;
+year++;
+}
+
+loadCalendar();
+
+}
+
+
+loadCalendar();
+
 </script>
+
 </body>
 </html>
+```
