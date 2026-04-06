@@ -3,305 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Attendance App</title>
+    <title>Smart Attendance App - Cloud Sync</title>
 
     <style>
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f4f6f9;
-            display: flex;
-            justify-content: center;
-        }
-
-        .app {
-            width: 100%;
-            max-width: 420px;
-            padding: 20px;
-        }
-
-        h2 {
-            text-align: center;
-            margin-bottom: 10px;
-            color: #333;
-        }
-
-        .nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .nav button {
-            padding: 8px 16px;
-            border: none;
-            background: #4a90e2;
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .calendar {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 6px;
-        }
-
-        .day {
-            background: white;
-            padding: 12px 0;
-            text-align: center;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-            transition: 0.2s;
-            font-weight: 500;
-        }
-
-        .day:hover {
-            background: #e6f0ff;
-            transform: translateY(-2px);
-        }
-
-        .selected-day-circle {
-            background: #4a90e2 !important;
-            color: white !important;
-        }
-
-        .attendance {
-            margin-top: 20px;
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .attendance h3 {
-            margin-top: 0;
-            font-size: 1.1rem;
-            color: #4a90e2;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-
-        .module {
-            display: flex;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .module input {
-            flex: 1;
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-            margin-right: 8px;
-            font-size: 14px;
-        }
-
-        .module input:focus {
-            outline: 2px solid #4a90e2;
-            border-color: transparent;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 4px;
-        }
-
-        .module button {
-            border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            background: #eee;
-            color: #666;
-            transition: 0.2s;
-        }
-
-        .present {
-            background: #28a745 !important;
-            color: white !important;
-        }
-
-        .absent {
-            background: #dc3545 !important;
-            color: white !important;
-        }
-
-        .add-btn {
-            width: 100%;
-            background: #f8f9fa;
-            border: 2px dashed #ddd;
-            padding: 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            color: #888;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        .add-btn:hover {
-            background: #eef2f7;
-            border-color: #4a90e2;
-            color: #4a90e2;
-        }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f4f6f9; display: flex; justify-content: center; }
+        .app { width: 100%; max-width: 420px; padding: 20px; }
+        h2 { text-align: center; margin-bottom: 10px; color: #333; }
+        .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .nav button { padding: 8px 16px; border: none; background: #4a90e2; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+        .day { background: white; padding: 12px 0; text-align: center; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.05); transition: 0.2s; font-weight: 500; }
+        .day:hover { background: #e6f0ff; transform: translateY(-2px); }
+        .selected-day-circle { background: #4a90e2 !important; color: white !important; }
+        .attendance { margin-top: 20px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .attendance h3 { margin-top: 0; font-size: 1.1rem; color: #4a90e2; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .module { display: flex; align-items: center; margin-bottom: 12px; }
+        .module input { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ddd; margin-right: 8px; font-size: 14px; }
+        .btn-group { display: flex; gap: 4px; }
+        .module button { border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; background: #eee; color: #666; transition: 0.2s; }
+        .present { background: #28a745 !important; color: white !important; }
+        .absent { background: #dc3545 !important; color: white !important; }
+        .add-btn { width: 100%; background: #f8f9fa; border: 2px dashed #ddd; padding: 10px; border-radius: 8px; cursor: pointer; color: #888; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 
 <body>
 <div class="app">
     <h2 id="monthYear"></h2>
-
     <div class="nav">
         <button onclick="prevMonth()">◀ Prev</button>
         <button onclick="nextMonth()">Next ▶</button>
     </div>
-
     <div class="calendar" id="calendar"></div>
-
     <div id="attendanceSection" class="attendance" style="display:none;">
         <h3 id="selectedDateDisplay"></h3>
         <div id="modules"></div>
     </div>
 </div>
 
-<script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    // 1. YOUR FIREBASE CONFIG GOES HERE
+    const firebaseConfig = {
+        apiKey: "AIzaSyB-hWEz_5HrPGYyCtaP7fvyFw2L732oWs8",
+        authDomain: "calendar-app-8743a.firebaseapp.com",
+        databaseURL: "https://calendar-app-8743a-default-rtdb.firebaseio.com",
+        projectId: "calendar-app-8743a",
+        storageBucket: "calendar-app-8743a.firebasestorage.app",
+        messagingSenderId: "101922708889",
+        appId: "1:101922708889:web:081bcafe7e3444b7bc4708",
+        measurementId: "G-TJYY4S32Y4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
     let today = new Date();
     let year = today.getFullYear();
     let month = today.getMonth();
     let currentlySelectedDay = null;
 
-    const calendarDiv = document.getElementById("calendar");
-    const monthYear = document.getElementById("monthYear");
-    const attendanceSection = document.getElementById("attendanceSection");
-    const selectedDateText = document.getElementById("selectedDateDisplay");
-    const modulesDiv = document.getElementById("modules");
-
-    function loadCalendar() {
+    window.loadCalendar = function() {
+        const calendarDiv = document.getElementById("calendar");
+        document.getElementById("monthYear").innerText = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
         calendarDiv.innerHTML = "";
-        monthYear.innerText = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
-
         let firstDay = new Date(year, month, 1).getDay();
         let daysInMonth = new Date(year, month + 1, 0).getDate();
 
-        // Fill empty spaces for previous month's tail
-        for (let i = 0; i < firstDay; i++) {
-            calendarDiv.innerHTML += "<div></div>";
-        }
+        for (let i = 0; i < firstDay; i++) calendarDiv.innerHTML += "<div></div>";
 
         for (let day = 1; day <= daysInMonth; day++) {
             let div = document.createElement("div");
-            div.className = "day";
-            div.innerText = day;
-            div.id = `day-cell-${day}`;
+            div.className = "day"; div.innerText = day; div.id = `day-cell-${day}`;
             div.onclick = () => openDay(day);
             calendarDiv.appendChild(div);
         }
     }
 
-    function openDay(day) {
-        // UI: Highlight selected day
-        if(currentlySelectedDay) {
-            document.getElementById(`day-cell-${currentlySelectedDay}`)?.classList.remove('selected-day-circle');
-        }
+    window.openDay = function(day) {
+        if(currentlySelectedDay) document.getElementById(`day-cell-${currentlySelectedDay}`)?.classList.remove('selected-day-circle');
         document.getElementById(`day-cell-${day}`).classList.add('selected-day-circle');
         currentlySelectedDay = day;
 
         let date = new Date(year, month, day);
         let weekday = date.toLocaleString('default', { weekday: 'long' });
-        
-        // Storage Keys
-        let dateKey = `date-${year}-${month + 1}-${day}`; // Unique for attendance
-        let weekKey = `weekschedule-${weekday}`;         // Shared for subject names
+        let dateKey = `${year}-${month + 1}-${day}`;
+        let weekKey = `weekschedule-${weekday}`;
 
-        selectedDateText.innerText = `${weekday}, ${date.getDate()} ${new Date(year, month).toLocaleString('default', { month: 'short' })}`;
-        attendanceSection.style.display = "block";
+        document.getElementById("selectedDateDisplay").innerText = `${weekday}, ${day}`;
+        document.getElementById("attendanceSection").style.display = "block";
 
-        // 1. Get Subject Names (linked to the weekday)
-        let weeklySchedule = JSON.parse(localStorage.getItem(weekKey)) || [
-            { name: "Module 1" }, { name: "Module 2" }
-        ];
+        // Listen for data from Firebase
+        onValue(ref(db, 'attendanceData/'), (snapshot) => {
+            const data = snapshot.val() || {};
+            const weeklySchedule = data[weekKey] || [{ name: "Module 1" }, { name: "Module 2" }];
+            const attendance = data[dateKey] || {};
+            renderModules(weeklySchedule, attendance, dateKey, weekKey, day);
+        }, { onlyOnce: true });
+    }
 
-        // 2. Get Attendance Status (linked to specific date)
-        let attendance = JSON.parse(localStorage.getItem(dateKey)) || {};
-
+    function renderModules(schedule, attendance, dateKey, weekKey, day) {
+        const modulesDiv = document.getElementById("modules");
         modulesDiv.innerHTML = "";
 
-        weeklySchedule.forEach((module, index) => {
-            let div = document.createElement("div");
-            div.className = "module";
-
-            let input = document.createElement("input");
-            input.type = "text";
-            input.value = module.name;
+        schedule.forEach((module, index) => {
+            let div = document.createElement("div"); div.className = "module";
+            let input = document.createElement("input"); input.value = module.name;
             
-            // If user changes subject name, save to the WEEKLY schedule
             input.onblur = () => {
-                weeklySchedule[index].name = input.value;
-                localStorage.setItem(weekKey, JSON.stringify(weeklySchedule));
+                schedule[index].name = input.value;
+                set(ref(db, `attendanceData/${weekKey}`), schedule);
             };
 
-            let btnGroup = document.createElement("div");
-            btnGroup.className = "btn-group";
-
-            let pBtn = document.createElement("button");
-            pBtn.innerText = "P";
-            let aBtn = document.createElement("button");
-            aBtn.innerText = "A";
-
-            // Apply active styles
-            if (attendance[index] === "P") pBtn.classList.add("present");
-            if (attendance[index] === "Abs") aBtn.classList.add("absent");
-
+            let pBtn = document.createElement("button"); pBtn.innerText = "P";
+            if (attendance[index] === "P") pBtn.className = "present";
             pBtn.onclick = () => {
                 attendance[index] = (attendance[index] === "P") ? null : "P";
-                localStorage.setItem(dateKey, JSON.stringify(attendance));
+                set(ref(db, `attendanceData/${dateKey}`), attendance);
                 openDay(day);
             };
 
+            let aBtn = document.createElement("button"); aBtn.innerText = "A";
+            if (attendance[index] === "Abs") aBtn.className = "absent";
             aBtn.onclick = () => {
                 attendance[index] = (attendance[index] === "Abs") ? null : "Abs";
-                localStorage.setItem(dateKey, JSON.stringify(attendance));
+                set(ref(db, `attendanceData/${dateKey}`), attendance);
                 openDay(day);
             };
 
-            btnGroup.appendChild(pBtn);
-            btnGroup.appendChild(aBtn);
-            div.appendChild(input);
-            div.appendChild(btnGroup);
+            div.appendChild(input); div.appendChild(pBtn); div.appendChild(aBtn);
             modulesDiv.appendChild(div);
         });
 
-        // Add Slot Button
         let addBtn = document.createElement("button");
-        addBtn.className = "add-btn";
-        addBtn.innerText = `+ Add Subject to all ${weekday}s`;
+        addBtn.className = "add-btn"; addBtn.innerText = "+ Add Subject to all " + new Date(year, month, day).toLocaleString('default', { weekday: 'long' }) + "s";
         addBtn.onclick = () => {
-            weeklySchedule.push({ name: "New Module" });
-            localStorage.setItem(weekKey, JSON.stringify(weeklySchedule));
+            schedule.push({ name: "New Module" });
+            set(ref(db, `attendanceData/${weekKey}`), schedule);
             openDay(day);
         };
-
         modulesDiv.appendChild(addBtn);
     }
 
-    function prevMonth() {
-        month--;
-        if (month < 0) { month = 11; year--; }
-        attendanceSection.style.display = "none";
-        loadCalendar();
-    }
-
-    function nextMonth() {
-        month++;
-        if (month > 11) { month = 0; year++; }
-        attendanceSection.style.display = "none";
-        loadCalendar();
-    }
+    window.prevMonth = () => { month--; if (month < 0) { month = 11; year--; } document.getElementById("attendanceSection").style.display = "none"; loadCalendar(); };
+    window.nextMonth = () => { month++; if (month > 11) { month = 0; year++; } document.getElementById("attendanceSection").style.display = "none"; loadCalendar(); };
 
     loadCalendar();
 </script>
