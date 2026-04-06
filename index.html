@@ -1,196 +1,282 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance App - Cloud Version</title>
+from flask import Flask, request, redirect
+import sqlite3
+
+app = Flask(__name__)
+
+def db():
+    return sqlite3.connect("planner.db")
+
+# CREATE DATABASE TABLES
+conn = db()
+conn.execute("""CREATE TABLE IF NOT EXISTS revision(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+text TEXT
+)""")
+conn.execute("""CREATE TABLE IF NOT EXISTS topics(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+text TEXT
+)""")
+conn.execute("""CREATE TABLE IF NOT EXISTS timetable(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+day TEXT,
+time TEXT,
+task TEXT
+)""")
+conn.commit()
+conn.close()
+
+# DASHBOARD
+@app.route("/")
+def home():
+    return """
     <style>
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f4f6f9; display: flex; justify-content: center; }
-        .app { width: 100%; max-width: 420px; padding: 20px; }
-        h2 { text-align: center; margin-bottom: 10px; }
-        .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .nav button { padding: 8px 16px; border: none; background: #4a90e2; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-        .day { background: white; padding: 12px 0; text-align: center; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.08); transition: 0.2s; }
-        .day:hover { background: #e6f0ff; }
-        .day.selected { border: 2px solid #4a90e2; background: #eef6ff; font-weight: bold; }
-        .attendance { margin-top: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .module { display: flex; align-items: center; margin-bottom: 10px; gap: 5px; }
-        .module input { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
-        .module button { border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; background: #eee; }
-        .present { background: #28a745 !important; color: white; }
-        .absent { background: #dc3545 !important; color: white; }
-        .add-btn { width: 100%; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; margin-top: 10px; cursor: pointer; font-weight: bold; }
-        .delete-btn { background: #ffeded !important; color: #dc3545 !important; font-size: 12px; }
+    body{font-family:Arial; background:#f4f6f9; text-align:center;}
+    .card{background:white; padding:25px; margin:20px; width:220px; display:inline-block; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.2);}
+    a{text-decoration:none; font-size:20px; color:black;}
     </style>
-</head>
-<body>
+    <h1>Study Planner Dashboard</h1>
+    <div class='card'><a href='/revision'>Revision</a></div>
+    <div class='card'><a href='/timetable'>Timetable</a></div>
+    <div class='card'><a href='/topics'>Interesting Topics</a></div>
+    """
 
-<div class="app">
-    <h2 id="monthYear"></h2>
-    <div class="nav">
-        <button onclick="changeMonth(-1)">◀ Prev</button>
-        <button onclick="changeMonth(1)">Next ▶</button>
+# REVISION DASHBOARD - shows notes as clickable folders
+@app.route("/revision", methods=["GET","POST"])
+def revision():
+    conn = db()
+    if request.method == "POST":
+        title = request.form["title"].strip()
+        text = request.form["text"].strip()
+        note = f"Title: {title}\n{text}" if title else text
+        conn.execute("INSERT INTO revision(text) VALUES(?)", (note,))
+        conn.commit()
+    data = conn.execute("SELECT * FROM revision").fetchall()
+    conn.close()
+
+    items = ""
+    for r in data:
+        lines = r[1].split("\n", 1)
+        if lines[0].startswith("Title:"):
+            title = lines[0][6:].strip()
+        else:
+            title = "Note"
+        items += f"""
+        <div class='folder-box'>
+            <a href='/revision/{r[0]}' class='folder-link'>📂 {title}</a>
+        </div>
+        """
+
+    return f"""
+    <style>
+    .folder-box {{ width:500px; margin:10px auto; padding:10px; background:#fff; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.2); }}
+    .folder-link {{ text-decoration:none; font-weight:bold; font-size:16px; color:black; }}
+    input, textarea {{ width:450px; padding:5px; font-size:16px; margin-bottom:10px; }}
+    </style>
+
+    <h2>Revision Notes</h2>
+    <form method='POST' style='margin-bottom:20px;'>
+        <input name='title' placeholder='Note Title'><br>
+        <textarea name='text' rows='4' placeholder='Write your revision notes here...'></textarea><br>
+        <button>Add Note</button>
+    </form>
+
+    {items}
+    <br><br>
+    <a href='/'>Back</a>
+    """
+
+# OPEN INDIVIDUAL NOTE - dedicated page
+@app.route("/revision/<int:id>", methods=["GET","POST"])
+def open_revision(id):
+    conn = db()
+    note = conn.execute("SELECT * FROM revision WHERE id=?", (id,)).fetchone()
+    conn.close()
+    lines = note[1].split("\n", 1)
+    if lines[0].startswith("Title:"):
+        title = lines[0][6:].strip()
+        content = lines[1] if len(lines) > 1 else ""
+    else:
+        title = "Note"
+        content = note[1]
+
+    return f"""
+    <h2>{title}</h2>
+    <div style='width:500px; margin:auto; background:#fff; padding:15px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.2);'>
+        <p>{content.replace('\n','<br>')}</p>
+        <div style='text-align:right;'>
+            <a href='/edit_revision/{id}'>✏ Edit</a>
+            <a href='/delete_revision/{id}'>🗑 Delete</a>
+        </div>
     </div>
-    <div class="calendar" id="calendar"></div>
+    <br><br>
+    <a href='/revision'>← Back to Revision Dashboard</a>
+    """
 
-    <div id="attendanceSection" class="attendance" style="display:none;">
-        <h3 id="selectedDateDisplay"></h3>
-        <div id="modules"></div>
-        <button class="add-btn" onclick="addModule()">+ Add Subject/Slot</button>
-    </div>
-</div>
+# EDIT REVISION
+@app.route("/edit_revision/<int:id>", methods=["GET","POST"])
+def edit_revision(id):
+    conn = db()
+    note = conn.execute("SELECT * FROM revision WHERE id=?", (id,)).fetchone()
+    conn.close()
+    lines = note[1].split("\n",1)
+    if lines[0].startswith("Title:"):
+        title = lines[0][6:].strip()
+        content = lines[1] if len(lines)>1 else ""
+    else:
+        title = ""
+        content = note[1]
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, get, child, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    if request.method == "POST":
+        new_title = request.form["title"].strip()
+        new_text = request.form["text"].strip()
+        final_note = f"Title: {new_title}\n{new_text}" if new_title else new_text
+        conn = db()
+        conn.execute("UPDATE revision SET text=? WHERE id=?", (final_note,id))
+        conn.commit()
+        conn.close()
+        return redirect("/revision")
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyCiV-EsnHoXdW4wTvJCsmUH_C2upW3NOAc",
-        authDomain: "calen-3220d.firebaseapp.com",
-        projectId: "calen-3220d",
-        storageBucket: "calen-3220d.firebasestorage.app",
-        messagingSenderId: "5682167802",
-        appId: "1:5682167802:web:8f23c92ec613ec1e6c6e43",
-        measurementId: "G-XXZQC0NJYK",
-        databaseURL: "https://calen-3220d-default-rtdb.firebaseio.com"
-    };
+    return f"""
+    <h2>Edit Note</h2>
+    <form method='POST'>
+        <input name='title' value='{title}' style='width:450px; padding:5px; font-size:16px;'><br><br>
+        <textarea name='text' rows='4' style='width:450px; padding:5px; font-size:16px;'>{content}</textarea><br><br>
+        <button>Update</button>
+    </form>
+    <br>
+    <a href='/revision'>Back</a>
+    """
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+# DELETE REVISION
+@app.route("/delete_revision/<int:id>")
+def delete_revision(id):
+    conn = db()
+    conn.execute("DELETE FROM revision WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    return redirect("/revision")
 
-    let currentYear = new Date().getFullYear();
-    let currentMonth = new Date().getMonth();
-    let selectedDay = null;
+# INTERESTING TOPICS
+@app.route("/topics", methods=["GET","POST"])
+def topics():
+    conn = db()
+    if request.method == "POST":
+        text = request.form["text"]
+        conn.execute("INSERT INTO topics(text) VALUES(?)", (text,))
+        conn.commit()
+    data = conn.execute("SELECT * FROM topics").fetchall()
+    conn.close()
 
-    // Attach to window so HTML buttons can access these functions
-    window.changeMonth = (dir) => {
-        currentMonth += dir;
-        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-        loadCalendar();
-    };
+    items = "<ul style='list-style-type:disc; text-align:left; width:500px; margin:auto;'>"
+    for t in data:
+        items += f"<li>{t[1]} <a href='/delete_topic/{t[0]}'>🗑</a></li>"
+    items += "</ul>"
 
-    async function loadCalendar() {
-        const calendarDiv = document.getElementById("calendar");
-        calendarDiv.innerHTML = "";
-        document.getElementById("monthYear").innerText = new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+    return f"""
+    <h2>Interesting Topics</h2>
+    <form method='POST'>
+        <textarea name='text' rows='3' placeholder='Write interesting topic...' style='width:450px; padding:5px; font-size:16px;'></textarea><br><br>
+        <button>Add Topic</button>
+    </form>
+    {items}
+    <br><br>
+    <a href='/'>Back</a>
+    """
 
-        let firstDay = new Date(currentYear, currentMonth, 1).getDay();
-        let daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+# DELETE TOPIC
+@app.route("/delete_topic/<int:id>")
+def delete_topic(id):
+    conn = db()
+    conn.execute("DELETE FROM topics WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    return redirect("/topics")
 
-        for (let i = 0; i < firstDay; i++) calendarDiv.innerHTML += "<div></div>";
+# TIMETABLE
+@app.route("/timetable", methods=["GET","POST"])
+def timetable():
+    conn = db()
+    if request.method == "POST":
+        day = request.form["day"]
+        time = request.form["time"]
+        task = request.form["task"]
+        conn.execute("INSERT INTO timetable(day,time,task) VALUES(?,?,?)", (day,time,task))
+        conn.commit()
 
-        for (let day = 1; day <= daysInMonth; day++) {
-            let div = document.createElement("div");
-            div.className = "day";
-            div.id = `day-${day}`;
-            div.innerText = day;
-            div.onclick = () => openDay(day);
-            calendarDiv.appendChild(div);
-        }
-    }
+    data = conn.execute("SELECT * FROM timetable ORDER BY day,time").fetchall()
+    conn.close()
 
-    window.openDay = async function(day) {
-        if(selectedDay) {
-            const prevDay = document.getElementById(`day-${selectedDay}`);
-            if(prevDay) prevDay.classList.remove('selected');
-        }
-        selectedDay = day;
-        document.getElementById(`day-${day}`).classList.add('selected');
+    rows = ""
+    for d in data:
+        rows += f"""
+        <tr>
+            <td>{d[1]}</td>
+            <td>{d[2]}</td>
+            <td>{d[3]}</td>
+            <td>
+                <a href='/edit/{d[0]}'>✏</a>
+                <a href='/delete/{d[0]}'>🗑</a>
+            </td>
+        </tr>
+        """
 
-        const dateKey = `${currentYear}-${currentMonth + 1}-${day}`;
-        const weekday = new Date(currentYear, currentMonth, day).toLocaleString('default', { weekday: 'short' });
-        const weekKey = `timetable-${weekday}`;
+    return f"""
+    <h2>Weekly Timetable</h2>
+    <form method='POST'>
+        <select name='day'>
+            <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+            <option>Thursday</option><option>Friday</option><option>Saturday</option>
+            <option>Sunday</option>
+        </select>
+        <input type='time' name='time'>
+        <input name='task' placeholder='Task'>
+        <button>Add</button>
+    </form>
+    <br>
+    <table border=1 style="margin:auto">
+        <tr><th>Day</th><th>Time</th><th>Task</th><th>Action</th></tr>
+        {rows}
+    </table>
+    <br><br>
+    <a href='/'>Back</a>
+    """
 
-        document.getElementById("selectedDateDisplay").innerText = `${dateKey} (${weekday})`;
-        document.getElementById("attendanceSection").style.display = "block";
+# DELETE TIMETABLE
+@app.route("/delete/<int:id>")
+def delete(id):
+    conn = db()
+    conn.execute("DELETE FROM timetable WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    return redirect("/timetable")
 
-        const dbRef = ref(db);
-        const [timetableSnap, attendanceSnap] = await Promise.all([
-            get(child(dbRef, `timetables/${weekKey}`)),
-            get(child(dbRef, `attendance/${dateKey}`))
-        ]);
+# EDIT TIMETABLE
+@app.route("/edit/<int:id>", methods=["GET","POST"])
+def edit(id):
+    conn = db()
+    if request.method == "POST":
+        day = request.form["day"]
+        time = request.form["time"]
+        task = request.form["task"]
+        conn.execute("UPDATE timetable SET day=?,time=?,task=? WHERE id=?", (day,time,task,id))
+        conn.commit()
+        conn.close()
+        return redirect("/timetable")
 
-        let timetable = timetableSnap.exists() ? timetableSnap.val() : [];
-        let attendance = attendanceSnap.exists() ? attendanceSnap.val() : {};
+    task = conn.execute("SELECT * FROM timetable WHERE id=?", (id,)).fetchone()
+    conn.close()
 
-        renderModules(timetable, attendance, dateKey, weekKey);
-    };
+    return f"""
+    <h2>Edit Task</h2>
+    <form method='POST'>
+        <input name='day' value='{task[1]}'>
+        <input type='time' name='time' value='{task[2]}'>
+        <input name='task' value='{task[3]}'>
+        <button>Update</button>
+    </form>
+    <br>
+    <a href='/timetable'>Back</a>
+    """
 
-    function renderModules(timetable, attendance, dateKey, weekKey) {
-        const modulesDiv = document.getElementById("modules");
-        modulesDiv.innerHTML = timetable.length === 0 ? "<p style='color:grey; font-size:0.9em;'>No subjects for this day.</p>" : "";
-
-        timetable.forEach((module, index) => {
-            if (!module) return; // Skip empty slots
-
-            const div = document.createElement("div");
-            div.className = "module";
-
-            const input = document.createElement("input");
-            input.value = module.name;
-            input.onblur = async () => {
-                timetable[index].name = input.value;
-                await set(ref(db, `timetables/${weekKey}`), timetable);
-            };
-
-            const pBtn = document.createElement("button");
-            pBtn.innerText = "P";
-            if (attendance[index] === "P") pBtn.classList.add("present");
-            pBtn.onclick = async () => saveStatus(dateKey, index, "P");
-
-            const aBtn = document.createElement("button");
-            aBtn.innerText = "A";
-            if (attendance[index] === "A") aBtn.classList.add("absent");
-            aBtn.onclick = async () => saveStatus(dateKey, index, "A");
-
-            const delBtn = document.createElement("button");
-            delBtn.innerText = "✕";
-            delBtn.className = "delete-btn";
-            delBtn.onclick = async () => {
-                timetable.splice(index, 1);
-                await set(ref(db, `timetables/${weekKey}`), timetable);
-                openDay(selectedDay);
-            };
-
-            div.appendChild(input);
-            div.appendChild(pBtn);
-            div.appendChild(aBtn);
-            div.appendChild(delBtn);
-            modulesDiv.appendChild(div);
-        });
-    }
-
-    async function saveStatus(dateKey, index, status) {
-        const currentRef = ref(db, `attendance/${dateKey}/${index}`);
-        const snap = await get(currentRef);
-        
-        // Toggle: If clicking the same button twice, it clears the status
-        if (snap.val() === status) {
-            await remove(currentRef);
-        } else {
-            await set(currentRef, status);
-        }
-        openDay(selectedDay); 
-    }
-
-    window.addModule = async function() {
-        if(!selectedDay) return;
-        const weekday = new Date(currentYear, currentMonth, selectedDay).toLocaleString('default', { weekday: 'short' });
-        const weekKey = `timetable-${weekday}`;
-        const dbRef = ref(db, `timetables/${weekKey}`);
-        
-        const snap = await get(dbRef);
-        let timetable = snap.exists() ? (Array.isArray(snap.val()) ? snap.val() : []) : [];
-        timetable.push({name: "New Subject"});
-        
-        await set(dbRef, timetable);
-        openDay(selectedDay);
-    };
-
-    loadCalendar();
-</script>
-
-</body>
-</html>
+if __name__=="__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
